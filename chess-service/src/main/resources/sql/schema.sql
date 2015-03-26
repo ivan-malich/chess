@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS Users;
+DROP TABLE IF EXISTS UserAccessGroups;
+CREATE TABLE IF NOT EXISTS Users (id INTEGER, email VARCHAR (500), password VARCHAR(50), birthDate DATE, userAccessGroup INTEGER);
+CREATE TABLE IF NOT EXISTS UserAccessGroups (id INTEGER, name VARCHAR (300), isAdmin BOOLEAN);
