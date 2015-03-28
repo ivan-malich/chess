@@ -1,5 +1,9 @@
 package com.javamonkeys.dao.user;
 
+import com.javamonkeys.hibernate.HibernateUtil;
+import org.hibernate.HibernateException;
+import org.hibernate.Query;
+import org.hibernate.Session;
 import org.springframework.stereotype.Repository;
 
 import java.util.Date;
@@ -21,14 +25,26 @@ public class UserDao implements IUserDao {
      */
     public User getUser(String email) throws UserNotFoundException {
 
-        // TODO: create method
-        UserAccessGroup testGroup = new UserAccessGroup("admin", true);
-        testGroup.setId(1);
+        if(email!=null) {
 
-        User testUser = new User(email, "12345", new Date(), testGroup);
-        testUser.setId(1);
+            HibernateUtil.begin();
+            Session session = HibernateUtil.getSession();
+            Query query = session.createQuery("from User where email = :email");
+            query.setParameter("email", email);
+            User currentUser = (User)query.uniqueResult();
+            HibernateUtil.commit();
+            HibernateUtil.close();
 
-        return testUser;
+            if (currentUser == null) {
+                throw new UserNotFoundException("User with email: " + email + " was not found");
+            }
+
+            return currentUser;
+
+        }else{
+            throw new UserNotFoundException("User with null email was not found");
+        }
+
     }
 
     /**
@@ -39,13 +55,43 @@ public class UserDao implements IUserDao {
      * @return new user
      * @throws UserAlreadyExistException if user which this email already exist
      */
-    public User createUser(String email, String password, UserAccessGroup userAccessGroup) throws UserAlreadyExistException {
+    public User createUser(String email, String password, UserAccessGroup userAccessGroup) throws UserAlreadyExistException,
+            IllegalArgumentException {
 
-        // TODO: create method
-        User testUser = new User(email, password, userAccessGroup);
-        testUser.setId(1);
+        if(email==null) {
+            throw new IllegalArgumentException("email: " + email + " is not valid");
+        } else if (password==null) {
+            throw new IllegalArgumentException("password: " + password + " is not valid");
+        } else if (userAccessGroup==null) {
+            throw new IllegalArgumentException("userAccessGroup: " + userAccessGroup + " is not valid");
+        } else {
 
-        return testUser;
+            try {
+                User currentUser = getUser(email);
+                if (currentUser != null) {
+                    throw new UserAlreadyExistException("User with email: " + email + " is already exist.");
+                }
+            } catch (UserNotFoundException e) {
+                // ok - create a new user
+            }
+
+            try {
+
+                HibernateUtil.begin();
+                Session session = HibernateUtil.getSession();
+                User newUser = new User(email, password, userAccessGroup);
+                session.save(newUser);
+                HibernateUtil.commit();
+                HibernateUtil.close();
+
+                return newUser;
+
+            } catch (HibernateException e) {
+                HibernateUtil.rollback();
+                HibernateUtil.close();
+                throw e;
+            }
+        }
     }
 
     /**
@@ -57,13 +103,45 @@ public class UserDao implements IUserDao {
      * @return new User
      * @throws UserAlreadyExistException if user which this email already exist
      */
-    public User createUser(String email, String password, UserAccessGroup userAccessGroup, Date birthDate) throws UserAlreadyExistException {
+    public User createUser(String email, String password, UserAccessGroup userAccessGroup, Date birthDate) throws UserAlreadyExistException,
+            IllegalArgumentException {
 
-        // TODO: create method
-        User testUser = new User(email, password, birthDate, userAccessGroup);
-        testUser.setId(1);
+        if(email==null) {
+            throw new IllegalArgumentException("argument \"email\": value " + email + " is not valid");
+        } else if (password==null) {
+            throw new IllegalArgumentException("argument \"password\": value " + password + " is not valid");
+        } else if (userAccessGroup==null) {
+            throw new IllegalArgumentException("argument \"userAccessGroup\": value " + userAccessGroup + " is not valid");
+        } else if (birthDate==null) {
+            throw new IllegalArgumentException("argument \"birthDate\": value " + birthDate + " is not valid");
+        } else {
 
-        return testUser;
+            try {
+                User currentUser = getUser(email);
+                if (currentUser != null) {
+                    throw new UserAlreadyExistException("User with email: " + email + " is already exist.");
+                }
+            } catch (UserNotFoundException e) {
+                // ok - create a new user
+            }
+
+            try {
+
+                HibernateUtil.begin();
+                Session session = HibernateUtil.getSession();
+                User newUser = new User(email, password, birthDate, userAccessGroup);
+                session.save(newUser);
+                HibernateUtil.commit();
+                HibernateUtil.close();
+
+                return newUser;
+
+            } catch (HibernateException e) {
+                HibernateUtil.rollback();
+                HibernateUtil.close();
+                throw e;
+            }
+        }
     }
 
     /**
@@ -71,8 +149,34 @@ public class UserDao implements IUserDao {
      * @param user user which need to delete
      * @throws UserNotFoundException if this user doesn't exist in DataBase
      */
-    public  void deleteUser(User user) throws UserNotFoundException {
-        // TODO: create method
+    public  void deleteUser(User user) throws UserNotFoundException, IllegalArgumentException {
+
+        if(user!=null) {
+
+            try {
+                User currentUser = getUser(user.getEmail());
+
+                try {
+
+                    HibernateUtil.begin();
+                    Session session = HibernateUtil.getSession();
+                    session.delete(currentUser);
+                    HibernateUtil.commit();
+                    HibernateUtil.close();
+
+                } catch (HibernateException e) {
+                    HibernateUtil.rollback();
+                    HibernateUtil.close();
+                    throw e;
+                }
+
+            } catch (UserNotFoundException e) {
+                // user not found - throw exception
+                throw e;
+            }
+        } else {
+            throw new UserNotFoundException("User: " + user + " was not found");
+        }
     }
 
     /**
@@ -83,11 +187,25 @@ public class UserDao implements IUserDao {
      */
     public UserAccessGroup getUserAccessGroup(String name) throws UserAccessGroupNotFoundException {
 
-        // TODO: create method
-        UserAccessGroup testGroup = new UserAccessGroup(name, true);
-        testGroup.setId(1);
+        if(name!=null) {
 
-        return testGroup;
+            HibernateUtil.begin();
+            Session session = HibernateUtil.getSession();
+            Query query = session.createQuery("from UserAccessGroup where name = :name");
+            query.setParameter("name", name);
+            UserAccessGroup currentGroup = (UserAccessGroup) query.uniqueResult();
+            HibernateUtil.commit();
+            HibernateUtil.close();
+
+            if (currentGroup == null) {
+                throw new UserAccessGroupNotFoundException("User access group with name: " + name + " not found.");
+            }
+
+            return currentGroup;
+
+        } else {
+            throw new UserAccessGroupNotFoundException("User access group with name: " + name + " not found.");
+        }
 
     }
 
@@ -96,16 +214,41 @@ public class UserDao implements IUserDao {
      * @param name user access group name
      * @param isAdmin if admin - true, else - false
      * @return new user access group
-     * @throws UserAccessGroupAlreadyExistException if user access group which this name already exist
+     * @throws UserAccessGroupAlreadyExistException if user access group which this name already exists
      */
-    public UserAccessGroup createUserAccessGroup(String name, boolean isAdmin) throws UserAccessGroupAlreadyExistException{
+    public UserAccessGroup createUserAccessGroup(String name, boolean isAdmin) throws UserAccessGroupAlreadyExistException,
+            IllegalArgumentException {
 
-        // TODO: create method
-        UserAccessGroup testGroup = new UserAccessGroup(name, isAdmin);
-        testGroup.setId(1);
+        if (name != null) {
 
-        return testGroup;
+            try {
+                UserAccessGroup currentGroup = getUserAccessGroup(name);
+                if (currentGroup != null) {
+                    throw new UserAccessGroupAlreadyExistException("User access group with name: " + name + " is already exist.");
+                }
+            } catch (UserAccessGroupNotFoundException e) {
+                // ok - create a new user access group
+            }
 
+            try {
+
+                HibernateUtil.begin();
+                Session session = HibernateUtil.getSession();
+                UserAccessGroup newGroup = new UserAccessGroup(name, isAdmin);
+                session.save(newGroup);
+                HibernateUtil.commit();
+                HibernateUtil.close();
+
+                return newGroup;
+
+            } catch (HibernateException e) {
+                HibernateUtil.rollback();
+                HibernateUtil.close();
+                throw e;
+            }
+        } else {
+            throw new IllegalArgumentException("argument \"name\": value " + name + " is not valid");
+        }
     }
 
     /**
@@ -113,8 +256,34 @@ public class UserDao implements IUserDao {
      * @param userAccessGroup user access group which need to delete
      * @throws UserAccessGroupNotFoundException if this user access group doesn't exist in DataBase
      */
-    public void deleteUserAccessGroup(UserAccessGroup userAccessGroup) throws UserAccessGroupNotFoundException{
-        // TODO: create method
+    public void deleteUserAccessGroup(UserAccessGroup userAccessGroup) throws UserAccessGroupNotFoundException,
+            IllegalArgumentException {
+
+        if(userAccessGroup!=null) {
+            try {
+                UserAccessGroup currentGroup = getUserAccessGroup(userAccessGroup.getName());
+
+                try {
+
+                    HibernateUtil.begin();
+                    Session session = HibernateUtil.getSession();
+                    session.delete(currentGroup);
+                    HibernateUtil.commit();
+                    HibernateUtil.close();
+
+                } catch (HibernateException e) {
+                    HibernateUtil.rollback();
+                    HibernateUtil.close();
+                    throw e;
+                }
+
+            } catch (UserAccessGroupNotFoundException e) {
+                // user not found - throw exception
+                throw e;
+            }
+        } else {
+            throw new UserAccessGroupNotFoundException("User access group: " + userAccessGroup + " was not found");
+        }
     }
 
 }
