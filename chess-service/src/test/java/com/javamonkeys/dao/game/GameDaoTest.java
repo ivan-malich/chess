@@ -3,6 +3,7 @@ package com.javamonkeys.dao.game;
 import com.javamonkeys.dao.user.*;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.test.context.ContextConfiguration;
@@ -20,13 +21,13 @@ public class GameDaoTest {
 
     @Inject
     IGameDao gameDao;
+    @Inject
+    IUserDao userDao;
 
     private String currentUserEmail = "sirosh@javamonkeys.com";
     private User currentUser;
 
     private User getUserForServiceUse(String email){
-
-        UserDao userDao = new UserDao();
 
         return userDao.getUserByEmail(email);
     }
@@ -48,12 +49,17 @@ public class GameDaoTest {
     }
 
     @Test
+    @Ignore
     public void testSaveTurn(){
 
         Game game = gameDao.getGame(2);
         String str = game.getMoveText();
 
-        gameDao.saveTurn(2, "2.d3 d6");
+        try {
+            gameDao.saveTurn(2, "2.d3 d6");
+        } catch (GameNotFoundException e) {
+            e.printStackTrace();
+        }
 
         game = gameDao.getGame(2);
 
